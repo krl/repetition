@@ -107,7 +107,7 @@ int main(int narg, char **args)
 
   crude_lock = 0;
 
-  fprintf (stderr, "eh. sizeof jack_nframes_t %i\n",sizeof (jack_nframes_t));
+  fprintf (stderr, "sizeof jack_nframes_t %i\n",sizeof (jack_nframes_t));
 
   if((client = jack_client_new ("kseq")) == 0)
     {
@@ -129,7 +129,6 @@ int main(int narg, char **args)
   int r;
   if (r = jack_connect(client, "kseq:out" , "specimen:midi_input"))
     fprintf (stderr, "could not connect, error code %i\n", r);
-
 
   // socket shiet
 
