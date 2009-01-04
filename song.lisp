@@ -1,20 +1,16 @@
 (in-package :musik)
 
-(defun make-drums (&optional (inspan (group-fullspan *workspace*)))
-   (reduce 'append
-	   (loop for span in (filter-by-tag (within-span *workspace* inspan) :type "measure")
-	      for i from 0
-	      collect
-		(within-span (clean ;; removes nil's
-			      (list
-			       (loop for s in (make-spans-over-type "beat" '(3 2) span)
-				  for j from 0
-				  collect
-				    (if (oddp j)
-					(perc (span-start s) "kick" 100)
-					(perc (span-start s) "snare" 100)))))
-			     span))))
-
+(defun make-drums (&optional (group *workspace*))
+  ; basic bassdrum/snare pattern
+  (flatten
+   (loop for measure in (filter-by-tag group :type "measure")
+      for i from 0
+      collect
+	(list 
+	 (simple-hit (span-start measure) '(:type "note"
+					    :note 55))
+	 (simple-hit (+ 1000 (span-start measure)) '(:type "note"
+						  :note 57))))))
 
 (progn
   (setf *workspace* nil)
@@ -29,7 +25,7 @@
 		(set-tags '(:type "measure" :label "m")
 			  (make-spans-over-type "beat" '(5 4 5 5))))
 
-  (add-to-group *workspace* (make-drums))
+  (add-to-group *workspace* (make-drums)))
 
-  (midi-reset)
-  (midi-play-group *workspace*))
+;;;   (midi-reset)
+;;;   (midi-play-group *workspace*)

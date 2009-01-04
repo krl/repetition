@@ -33,8 +33,8 @@
   (let ((byte-array (byte-array-from-data note-data)))
     (socket-send *socket* byte-array (array-total-size byte-array))))
 
-(progn
-  (send-data (make-note 1 57 100 100)))
+;; (progn
+;;   (send-data (make-note 1 57 100 100)))
 
 (defun midi-reset ()
   (send-data *reset*))

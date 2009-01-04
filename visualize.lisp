@@ -38,13 +38,14 @@
 				      (< (drawing-pass x)
 					 (drawing-pass y))))))
 
+    (setf dbgh "nop")
+
     (with-html-output-to-string (*standard-output*)
       (:svg :xmlns  "http://www.w3.org/2000/svg" :version "1.1"
 	    :width  (+ width 50)
 	    :height (+ height 40)
 
 	    ;; keyroll
-
 	    (:g :rx 10 :stroke "black" :stroke-width "1px"
 		:transform "translate (10,40)"		   
 		(loop 
@@ -56,7 +57,6 @@
 			(:text :color "#fff" :x 2 :y (- (* span-height (+ count 1)) 3) :width 0
 			       (fmt "~A" key-num))))))
 		     
-
 	    ;; main group
 	    (:g :rx 10 :stroke "black" :stroke-width "1px"
 		:transform "translate (50,40)"
@@ -71,16 +71,18 @@
 			   (span-y (* span-height (length (spanning-this group span))))
 			   (type (span-tag span :type))
 			   (width (* (span-length span) beat-width)))
+
 		       (cond 
 			 ;; is of special type 'beat 'measure
 			 ((string= type "beat")
-			      (if (oddp count)
+			      (if (oddp count)		
 				  (htm
 				   (:rect :fill "#fff"
 					  :style "fill-opacity:0.5;"
 					  :stroke-width 0
 					  :x span-x :width width 
-					  :height height))))
+					  :height height))
+				  ))
 			 ;; is 'endless'
 			 ((= (span-start span) (span-end span))
 			  (htm
@@ -93,4 +95,8 @@
 			  (htm					
 			   (:rect :fill "#f7f" :x span-x :y (- (- span-y) span-height) :width width :height span-height)
 			   (:text :color "#fff" :x (+ span-x space-x) :y (- (- span-y) 3) :width 0
-				  (fmt "~A" (span-tag span :label)))))))))))))
+				  (fmt "~A" (span-tag span :label)))))))))
+
+	    ;; title
+	    (:text :color "#fff" :x 2 :y span-height :width 0
+		   (fmt "test ~A hehe" dbgh))))))

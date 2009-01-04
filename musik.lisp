@@ -4,8 +4,7 @@
   (asdf-install:install 'cl-who)
   (asdf-install:install 'hunchentoot))
 
-(defpackage :musik
-  (:use :cl :cl-who :hunchentoot :cl-ppcre :sb-bsd-sockets))
+(defpackage :musik (:use :cl :cl-who :hunchentoot :cl-ppcre :sb-bsd-sockets))
 
 (in-package :musik)
 
@@ -37,6 +36,9 @@
 
 (defun simple-span (start end &optional tags)
   (make-span :start start :end end :tags tags))
+
+(defun simple-hit (start &optional tags)
+  (make-span :start start :end start :tags tags))
 
 (defun set-tags (tags spans)
   (loop for s in spans
@@ -73,11 +75,13 @@
   (loop for s in group
        when s collect it))
 
-(defun flatten (tree)
-  (if (atom tree)
-      (list tree)
-      (nconc (flatten (car tree))
-	     (if (cdr tree) (flatten (cdr tree))))))
+(defun flatten (tree &rest rest)
+  (if rest 
+      (flatten (list tree rest))
+      (if (atom tree)
+	  (list tree)
+	  (nconc (flatten (car tree))
+		 (if (cdr tree) (flatten (cdr tree)))))))
 
 (defmacro add-to-group (group what)
   `(setf ,group (nconc ,group ,(if (listp what) what (list what)))))
@@ -183,19 +187,25 @@
 ;;}}}
 ;;{{{ get-info group
 
-; FIXME stupid implentation
+(defun get-end (group)
+  (if group
+      (span-end
+       (first
+	(sort group (lambda (x y)
+		      (> (span-end x) (span-end y))))))
+      0))
 
-(defun get-end (what)
-  (let ((largest 0))
-    (cond ((not what)
-	   (setf largest 0))
-	  ((listp what)
-	   (loop for span in what do
-		(let ((test (span-end span)))
-		  (if (> test largest)
-		      (setf largest test)))))
-	  (t (setf largest (span-end what))))
-    largest))
+;;;(defun get-end (group)
+;;;   (let ((largest 0))
+;;;     (cond ((not what)
+;;; 	   (setf largest 0))
+;;; 	  ((listp what)
+;;; 	   (loop for span in what do
+;;; 		(let ((test (span-end span)))
+;;; 		  (if (> test largest)
+;;; 		      (setf largest test)))))
+;;; 	  (t (setf largest (span-end what))))
+;;;     largest))
 
 ;;}}}
 
