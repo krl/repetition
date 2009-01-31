@@ -1,101 +1,196 @@
+(load "pipe.lisp")
+
+(defpackage :musik (:use :cl))
 (in-package :musik)
 
-;;{{{ webserver
+;; defines
 
-(if (not (boundp '*server*))
-    (setq *server* (start-server :port 1777)))
+(defvar *samplerate* 44100)
+(defvar *piano* 0)
+(defvar *drums* 1)
 
-(push (create-prefix-dispatcher "/musik.svg" 'visualize) *dispatch-table*)
-(setf *DEFAULT-CONTENT-TYPE* "image/svg+xml")
+(defparameter -kick 36)
+(defparameter -rim 37)
+(defparameter -snare 38)
+(defparameter -hic 42)
+(defparameter -hio 46)
+(defparameter -ride 51)
+(defparameter -crash 57)
 
-(setq *catch-errors-p* nil)
+;; datastruct
 
-;;}}}
+(defclass spanset ()
+  ((spans :accessor spans
+	  :initform '()
+	  :initarg :spans)))
 
-;;{{{ visualization
+(defun make-spanset (form)
+  (make-instance 'spanset :spans form))
 
-(defun drawing-pass (span)
-  (let ((type (span-tag span :type)))
-    (cond 
-	((string= type "beat")    0)
-	((string= type "measure") 1)
-	((string= type "note")    2)
-	(t 9000))))
+;; internal functions
+(defun span-shift (span func &optional func2)
+	    (let ((new (copy-list span)))
+	      (setf (getf new :start) (funcall func (getf new :start)))
+	      (setf (getf new :end) (funcall (or func2 func) (getf new :end)))
+	      new))
 
-(defun visualize (&optional 
-		  (group *workspace*)
-		  (width 600)
-		  (height 400)
-		  (top-key 60)
-		  (show-keys 25)
-		  (show-beats 4))
+(defun span-midi (span)
+  (list 
+   (list (floor (getf span :start))
+	 (+ #x90 (getf span :channel))
+	 (or (getf span :note)) 60
+	 (or (getf span :vel) 127))
+   (list (floor (getf span :end))
+	 (+ #x80 (getf span :channel))
+	 (or (getf span :note)) 60
+	 (or (getf span :vel) 127))))
 
-  (declare (optimize (debug 3)))
+;; methods
 
-  (let* ((space-x (/ width 100))
-	 (space-y (/ height 100))
-	 (beats (get-end group))
-	 (beat-width (/ width (if (not (= 0 beats)) beats 1) 1.0))
-	 (span-height (/ height show-keys 1.0))
-	 (group (sort (copy-list group) (lambda (x y) 
-				      (< (drawing-pass x)
-					 (drawing-pass y))))))
+(defmethod set-length ((set spanset))
+  (reduce (lambda (x y)
+	    (max x (getf y :end)))
+	  (spans set)
+	  :initial-value 0))
 
-    (with-html-output-to-string (*standard-output*)
-      (:svg :xmlns  "http://www.w3.org/2000/svg" :version "1.1"
-	    :width  (+ width 50)
-	    :height (+ height 40)
+(defmethod join (&rest list)
+  "merge two sets"
+  (make-spanset
+   (labels ((get-spans (setlist)
+	      (if setlist
+		  (nconc (spans (first setlist))
+			 (get-spans (rest setlist))))))
+     (get-spans (trim list)))))
 
-	    ;; keyroll
+(defmethod on-each ((set spanset) func)
+  (make-spanset 
+   (map 'list (lambda (x)
+		(funcall func x))
+	(spans set))))
 
-	    (:g :rx 10 :stroke "black" :stroke-width "1px"
-		:transform "translate (10,40)"		   
-		(loop 
-		   for count below show-keys
-		   collect 
-		     (let ((key-num (- top-key count)))
-		       (htm			
-			(:rect :x 0 :y (* span-height count) :width 40 :height span-height :fill "#fff")
-			(:text :color "#fff" :x 2 :y (- (* span-height (+ count 1)) 3) :width 0
-			       (fmt "~A" key-num))))))
-		     
+(defmethod offset (amount (set spanset))
+  (on-each set (lambda (x) (span-shift x (lambda (x) (+ x amount))))))
 
-	    ;; main group
-	    (:g :rx 10 :stroke "black" :stroke-width "1px"
-		:transform "translate (50,40)"
-		;; first draw container rectangle
-		(:rect :x 0 :y 0 :width width :height height :fill "#fcf" :stroke-width 0)
-		;; paint the workspace objects
-		(loop 
-		   for span in group
-		   for count from 0
-		   collect 
-		     (let ((span-x (* (span-start span) beat-width))
-			   (span-y (* span-height (length (spanning-this group span))))
-			   (type (span-tag span :type))
-			   (width (* (span-length span) beat-width)))
-		       (cond 
-			 ;; is of special type 'beat 'measure
-			 ((string= type "beat")
-			      (if (oddp count)
-				  (htm
-				   (:rect :fill "#fff"
-					  :style "fill-opacity:0.5;"
-					  :stroke-width 0
-					  :x span-x :width width 
-					  :height height))))
-			 ;; is 'endless'
-			 ((= (span-start span) (span-end span))
-			  (htm
-			   (:circle :fill "#f7f" :cx span-x :r (/ span-height 3)
-				    :cy (+ (* (- top-key (span-tag span :note)) 
-					      span-height)
-					   (/ span-height 2)))))
-			 ;; otherwise it's a marking span i guess.
-			 (t
-			  (htm					
-			   (:rect :fill "#f7f" :x span-x :y (- (- span-y) span-height) :width width :height span-height)
-			   (:text :color "#fff" :x (+ span-x space-x) :y (- (- span-y) 3) :width 0
-				  (fmt "~A" (span-tag span :label)))))))))))))
+(defmethod scale (amount (set spanset))
+  (on-each set (lambda (x) (span-shift x (lambda (x) (* x amount))))))
 
-;;}}}
+(defmacro scale-bpm (bpm spanset)
+  `(scale ,(/ (* *samplerate* 60) bpm) ,spanset))
+
+(defun seq (&rest list)
+  (make-spanset
+   (labels ((seq-sets (setlist &optional (amount 0))
+	      (if setlist
+		  (let ((length (set-length (first setlist))))
+			(nconc (spans (offset amount (first setlist)))
+			       (seq-sets (rest setlist) (incf amount length)))))))
+     (seq-sets (trim list)))))
+
+(defmethod add-keys (keys (set spanset))
+  (declare (indent defun))
+  (on-each set (lambda (x)
+		 (let ((span (copy-list x)))
+		   (loop for (key val) on keys by #'cddr
+		      :do (setf (getf span key) val))
+		   span))))
+
+;; multi macro
+
+(defmacro n-of (times &rest what)
+  (let ((w (gensym)))
+    `(loop for ,(gensym) below ,times
+	:collect 
+	  (loop for ,w in ',what
+	     :collect (eval ,w)))))
+
+(defmacro maybe (chance &rest what)
+  (let ((w (gensym)))
+    `(if (> ,chance (random 1.0))
+	 (loop for ,w in ',what
+	    :collect (eval ,w)))))
+
+(defmacro s-of (times &rest what)
+  `(seq (n-of ,times ,@what)))
+
+;; output functions
+(defmethod dump-midi ((set spanset))
+  (sort
+   (reduce 'nconc 
+	   (map 'list (lambda (x) (span-midi x)) (spans set)))
+   (lambda (x y) (< (first x) (first y)))))
+
+; helpers
+
+(defun clean (list)
+  (loop for s in list
+       when s collect it))
+
+(defun trim (list)
+  (clean (flatten list)))
+
+(defun flatten (tree &rest rest)
+  (if rest 
+      (flatten (list tree rest))
+      (if (atom tree)
+	  (list tree)
+	  (nconc (flatten (car tree))
+		 (if (cdr tree) (flatten (cdr tree)))))))
+
+; standard types
+(defun single (spanform)
+  (make-spanset (list spanform)))
+
+(defun make-span (length &optional keys)
+  (add-keys keys
+	    (single `(:start 0 :end ,length))))
+
+(defun multi-spans (lengths &optional keys)
+  (labels ((multi (lengths)
+	     (if lengths
+		 (cons (make-span (first lengths) keys)
+		       (multi (rest lengths))))))
+    (multi lengths)))
+
+
+(defun make-note (length note &optional (vel 100))
+  (single `(:type "note" :start 0 :end ,length :note ,note :vel ,vel)))
+
+(setf +songstructure
+ '(add-keys '(:type "measure" :key "C")
+	   (seq
+	    (n-of 4
+		     (seq 
+		      (multi-spans '(5 4 5 5)))))))
+
+(spans (eval +songstructure))
+
+(setf +drumbeat 
+      '(seq
+	(join
+	 (make-note 1 -kick)
+	 (maybe .7 (make-note 1 -crash)))
+	(make-note 1 -kick)
+	(make-note 1 -snare)
+	(seq 
+	 (s-of (+ 1 (random 3))
+	  (make-note .5 -hio)
+	  (make-note .5 -rim))
+	 (maybe .5 (s-of 2 (make-note .5 -snare))))))
+
+(setf +piano '(seq
+	       (maybe .9
+		(join
+		 (make-note 1 43)
+		 (make-note 1 47)))
+	       (join
+		(make-note (+ (random 2) 2) (+ (random 4) 45))
+		(make-note (+ (random 2) 2) 40))))
+
+;; ehu ehu ehu
+
+(play (scale-bpm 120
+	     (join
+	      (add-keys `(:channel ,*piano*)
+			(s-of 16 (eval +piano)))
+	      (add-keys `(:channel ,*drums*)
+			(s-of 12 (eval +drumbeat))))))

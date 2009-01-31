@@ -34,11 +34,10 @@
 	 (beats (get-end group))
 	 (beat-width (/ width (if (not (= 0 beats)) beats 1) 1.0))
 	 (span-height (/ height show-keys 1.0))
-	 (group (sort (copy-list group) (lambda (x y) 
-				      (< (drawing-pass x)
-					 (drawing-pass y))))))
-
-    (setf dbgh "nop")
+;;; 	 (group (sort (copy-list group) (lambda (x y) 
+;;; 				      (< (drawing-pass x)
+;;; 					 (drawing-pass y)))))
+	 )
 
     (with-html-output-to-string (*standard-output*)
       (:svg :xmlns  "http://www.w3.org/2000/svg" :version "1.1"
@@ -98,5 +97,6 @@
 				  (fmt "~A" (span-tag span :label)))))))))
 
 	    ;; title
-	    (:text :color "#fff" :x 2 :y span-height :width 0
-		   (fmt "test ~A hehe" dbgh))))))
+;;; 	    (:text :x 2 :y span-height :width 0
+;;; 		   (fmt "~A" dbgh))
+	    ))))

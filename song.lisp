@@ -2,15 +2,19 @@
 
 (defun make-drums (&optional (group *workspace*))
   ; basic bassdrum/snare pattern
-  (flatten
+  (trim
    (loop for measure in (filter-by-tag group :type "measure")
-      for i from 0
+      for m from 0
       collect
-	(list 
-	 (simple-hit (span-start measure) '(:type "note"
-					    :note 55))
-	 (simple-hit (+ 1000 (span-start measure)) '(:type "note"
-						  :note 57))))))
+	(list
+	 (loop for rhythm in (make-spans-over-type "beat" (if (evenp m) '(3 2) '(2 2)) measure)
+	    for r from 0
+	    collect
+	      (if (evenp r)
+		  (simple-hit (span-start rhythm) 55)
+		  (simple-hit (span-start rhythm) 57)))
+	 (if (= 0 (mod m 4))
+	     (simple-hit (span-start measure) 59))))))
 
 (progn
   (setf *workspace* nil)
@@ -27,5 +31,3 @@
 
   (add-to-group *workspace* (make-drums)))
 
-;;;   (midi-reset)
-;;;   (midi-play-group *workspace*)

@@ -1,8 +1,7 @@
 ;;{{{ package
-(when nil
-  (asdf:oos 'asdf:load-op 'asdf-install)
-  (asdf-install:install 'cl-who)
-  (asdf-install:install 'hunchentoot))
+(require 'asdf)
+(require 'cl-who)
+(require 'hunchentoot)
 
 (defpackage :musik (:use :cl :cl-who :hunchentoot :cl-ppcre :sb-bsd-sockets))
 
@@ -37,8 +36,8 @@
 (defun simple-span (start end &optional tags)
   (make-span :start start :end end :tags tags))
 
-(defun simple-hit (start &optional tags)
-  (make-span :start start :end start :tags tags))
+(defun simple-hit (start note)
+  (make-span :start start :end start :tags `(:type "note" :note ,note)))
 
 (defun set-tags (tags spans)
   (loop for s in spans
@@ -74,6 +73,9 @@
 (defun clean (group)
   (loop for s in group
        when s collect it))
+
+(defun trim (what)
+  (clean (flatten what)))
 
 (defun flatten (tree &rest rest)
   (if rest 
@@ -191,7 +193,7 @@
   (if group
       (span-end
        (first
-	(sort group (lambda (x y)
+	(sort (copy-list group) (lambda (x y)
 		      (> (span-end x) (span-end y))))))
       0))
 
