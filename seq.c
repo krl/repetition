@@ -11,6 +11,7 @@ jack_nframes_t time_index = 0;
 int read_index = 0;
 int write_index = 0;
 int client_active = 0;
+int killed = 0;
 
 typedef struct {
   jack_nframes_t time;
@@ -31,21 +32,34 @@ int process(jack_nframes_t nframes, void *arg)
   unsigned char *buffer;
   jack_midi_clear_buffer(port_buf);
 
-  while (write_index > read_index &&
+  unsigned char all_notes_off = 123;
+
+  while (!killed &&
+	 write_index > read_index &&
 	 eventbuffer[read_index].time <= (time_index + nframes))
     {
-      printf("process, read: %i, write: %i\n", read_index, write_index);
-      fflush(stdout);
+      /* printf("process, read: %i, write: %i\n", read_index, write_index); */
+      /* fflush(stdout); */
 
-      printf("%i: writing %i %i %i\n",
-	     eventbuffer[read_index].time,  
-	     eventbuffer[read_index].data[0],
-	     eventbuffer[read_index].data[1], 
-	     eventbuffer[read_index].data[2]);
-      fflush(stdout);
+      /* printf("%i: writing %i %i %i\n", */
+      /* 	     eventbuffer[read_index].time,   */
+      /* 	     eventbuffer[read_index].data[0], */
+      /* 	     eventbuffer[read_index].data[1],  */
+      /* 	     eventbuffer[read_index].data[2]); */
+      /* fflush(stdout); */
 
-      jack_midi_event_write(port_buf, (int)(eventbuffer[read_index].time - time_index), eventbuffer[read_index].data , 3);
-      read_index++;
+      if (eventbuffer[read_index].data[0] == 252) // midi reset
+	{	 
+	  jack_midi_event_write(port_buf, 0, &all_notes_off , 1); // all notes off
+	  printf("killed\n");
+	  fflush(stdout);
+	  killed = 1;
+	}
+      else
+	{
+	  jack_midi_event_write(port_buf, (int)(eventbuffer[read_index].time - time_index), eventbuffer[read_index].data , 3);
+	  read_index++;
+	}
     }
 
   time_index = time_index + nframes;
@@ -88,7 +102,7 @@ int main(int narg, char **args)
 
   fflush(stdout);
 
-  while (1) 
+  while (!killed) 
     {
       //read loop
       if (write_index > RINGBUFFER_SIZE) write_index = 0;
@@ -107,4 +121,8 @@ int main(int narg, char **args)
 	activate_and_connect();
 
     }
+
+  jack_deactivate(client);
+  return 0;
+
 }
