@@ -14,5 +14,6 @@
   :serial t
 ;;;   :depends-on (:common-lisp)
   :components ((:file "musik")
+	       (:file "helpers")
 	       (:file "pipe")
 	       (:file "sets")))

@@ -87,14 +87,17 @@
 	(make-note .5 -hio))))))
 
 (let ((env (song)))
-  (spans (scale-bpm 140
+  (reset)
+  (send (scale-bpm 140
 		   (seq
 		    (pause 2)
-		    (s-of 1
+		    (s-of 5
 			  (join
 			   (add-keys `(:channel ,*bass*)
 				     (bass env))
 			   (add-keys `(:channel ,*piano*)
 				     (piano env))
 			   (add-keys `(:channel ,*drums*)
-				     (drums env))))))))
+				     (drums env))))
+		    )))
+  (play))

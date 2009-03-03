@@ -210,19 +210,3 @@
 
 (defun pause (length)
   (single `(:type "pause" :start 0 :end ,length)))
-
-;; theory
-
-(defparameter minor '(0 2 3 5 7 8 10)) 
-(defparameter major '(0 2 4 5 7 9 10))
-
-(defun note (number context)
-  (let* ((base 40)
-	 (key minor)
-	 (chord (+ (or (span-get context :chord) 1)
-		   number -2))
-	 (length (length key)))
-    (+
-     base
-     (* 12 (floor (/ number length)))
-     (nth (mod chord length) key))))
