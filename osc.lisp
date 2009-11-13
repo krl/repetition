@@ -7,7 +7,14 @@
 (defvar *port* 57110)
 (setf *port* 57110)
 ;(setf *port* 7000)
-      
+
+(defclass target ()
+  ((url  :initarg :url)
+   (port :initarg :port)))
+
+(defun target (url port)
+  (make-instance 'target :url url :port port))
+
 (setf *socket* (make-instance 'inet-socket 
 			      :protocol :udp 
 			      :type :datagram))
@@ -31,29 +38,16 @@
 (defun send (timetag message)
   (dolist (x (unpack message))
     (let* ((offset (if timetag
-		       (+ timetag (or (hack x "offset") 0))))
-	   (bundle (encode-bundle x offset)))
+		       (+ timetag (or (getval x :offset) 0))))
+	   (bundle (encode-bundle (makeosc x) offset)))
       (socket-send *socket* bundle
 		   (length bundle)
-		   :address `(#(127 0 0 1) ,*port*)))))
+		   :address (slot-value x 'target)))))
 
 (defun sendnow (messages)
   (send (now 0.5) messages))
 
-(defgeneric unpack (item)
-  ; takes an item and returns a list of osc-messages
-  (:method ((item collection))
-    (reduce (lambda (x y)
-	      (nconc x (unpack y)))
-	    (slot-value item 'items)
-	    :initial-value nil))
-  (:method ((item seq))
-    (setf (slot-value item 'items)      
-	  (let ((offset 0))
-	    (map 'list (lambda (a)
-			 (let ((off (++i offset (len a))))
-			   ;; this is to evaluate ++i only once as opposed to
-			   ;; once per lambda-evaluation
-			   (setval :offset (lambda (x) (+ (or x 0) off)) a)))
-		 (slot-value item 'items))))
-    (call-next-method)))
+(defgeneric makeosc (item)
+  ; takes an item and returns a list formatted as an OSC packet
+  ; TODO, figure out what the "0 1" is all about..
+  )

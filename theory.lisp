@@ -15,9 +15,7 @@
       (concatenate 'list (last list) (butlast list))
       (concatenate 'list (rest list) (list (first list)))))
 
-(defun offset (n intervals &optional (count 0))
-  (format t "~a ~a ~a~%" n intervals count)
-  (if (zerop n) count
+(defun offset (n intervals &optional (count 0))  (if (zerop n) count
       (if (> 0 n)
 	  (offset (+ n 1) (shift intervals t) (- count (first (last intervals))))
 	  (offset (- n 1) (shift intervals  ) (+ count (first intervals))))))

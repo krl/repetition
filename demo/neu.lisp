@@ -16,22 +16,22 @@
 (setf *crash* (drum "crash"))
 
 (sendnow (seq-n 100
-	   (let ((pitch (random 10)))
-	     (join
+	  (let ((pitch (random 10)))
+	    (join
 					; phazor
-	      (join-n (phase 4)
-		(ass :freq (+ (* (freq *minor* 5) (+ pitch 3)) phase)
-		     :amp 0.2
-		     :sustain 4
-		     *skrän*))
+	     (join-n (phase 4)
+	       (ass :freq (+ (* (freq *minor* 5) (+ pitch 3)) phase)
+		    :amp 0.2
+		    :sustain 4
+		    *skrän*))
 					; wobba
-	      (seq
-	       (ass :freq (freq *minor* 2)
-		    :wobfreq 1
-		    (seq-n 3 *wobb*))
-	       (ass :freq (freq *minor* pitch)
-		    :wobfreq 3
-		    *wobb*))
+	     (seq
+	      (ass :freq (freq *minor* 2)
+		   :wobfreq 1
+		   (seq-n 3 *wobb*))
+	      (ass :freq (freq *minor* pitch)
+		   :wobfreq 3
+		   *wobb*))
 					; trum
-	      (ass :amp 1
-		   (seq (join *kick* (ass :amp 0.1 *crash*)) *kick* *snare*))))))
+	     (ass :amp 1
+		  (seq (join *kick* (ass :amp 0.1 *crash*)) *kick* *snare*))))))

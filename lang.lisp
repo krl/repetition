@@ -5,10 +5,8 @@
   (elt choices (random (length choices))))
 
 (defclass message ()
-  ((value :initarg :value)))
-
-(defun message (&optional message)
-  (make-instance 'message :value message))
+  ((value  :initarg :value)
+   (target :initarg :target)))
 
 (defclass collection ()
   ((items :initarg :items)))
@@ -86,3 +84,24 @@
   (:method ((item seq))
     (reduce (lambda (x y) (+ x (len y))) (slot-value item 'items) :initial-value 0)))
 
+
+(defgeneric unpack (item)
+  ; return all the leaves in tree
+  (:method ((item collection))
+    (reduce (lambda (x y)
+	      (nconc x (unpack y)))
+	    (slot-value item 'items)
+	    :initial-value nil))
+  (:method ((item seq))
+    (setf (slot-value item 'items)      
+	  (let ((offset 0))
+	    (map 'list (lambda (a)
+			 (let ((off (++i offset (len a))))
+			   ;; this is to evaluate ++i only once as opposed to
+			   ;; once per lambda-evaluation
+			   (setval :offset (lambda (x) (+ (or x 0) off)) a)))
+		 (slot-value item 'items))))
+    (call-next-method))
+  (:method ((item message))
+    (list item)))
+    
