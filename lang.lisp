@@ -31,20 +31,27 @@
       `(loop for ,counter from 0 below ,number
 	  :collect ,item))))
 
-(defmacro seq-n (number item)
-  `(apply 'seq (n ,number ,item)))
+(defmacro seq-n (number &body item)
+  (if (= (length item) 1)
+      `(apply 'seq (n ,number ,(first item)))
+      (error "one argument only")))
+  
+(defmacro join-n (number &body item)
+  (if (= (length item) 1)
+      `(apply 'join (n ,number ,(first item)))
+      (error "one argument only")))
 
-(defmacro join-n (number item)
-  `(apply 'join (n ,number ,item)))
+(defmacro ++i (place amount)
+  (multiple-value-bind (temps values store writeform readform) (get-setf-expansion place)
+    `(let ,(loop for temp in temps for value in values :collect (list temp value))
+       (let* ((old ,readform)
+	      (,(first store) (+ old ,amount)))
+	 ,writeform
+	 old))))
 
-(defmacro ++i (val amount)
-  `(let ((old ,val))
-     (incf ,val ,amount)
-     old))
-
-(defgeneric copy-instance (instance)
+(defgeneric copy-instance (item)
   (:method ((item message))
-    (message (copy-list (slot-value item 'value)))))
+    (make-instance (class-of item) :value (copy-list (slot-value item 'value)))))
 
 (defgeneric getval (item value)
   (:method ((item message) key)
@@ -79,21 +86,3 @@
   (:method ((item seq))
     (reduce (lambda (x y) (+ x (len y))) (slot-value item 'items) :initial-value 0)))
 
-(defgeneric unpack (item)
-  (:method ((item message))
-    (list (slot-value item 'value)))
-  (:method ((item collection))
-    (reduce (lambda (x y)
-	      (nconc x (unpack y)))
-	    (slot-value item 'items)
-	    :initial-value nil))
-  (:method ((item seq))
-    (setf (slot-value item 'items)      
-	  (let ((offset 0))
-	    (map 'list (lambda (a)
-			 (let ((off (++i offset (len a))))
-			   ;; this is to evaluate ++i only once as opposed to
-			   ;; once per lambda-evaluation
-			   (setval :offset (lambda (x) (+ (or x 0) off)) a)))
-		 (slot-value item 'items))))
-    (call-next-method)))

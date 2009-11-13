@@ -7,5 +7,6 @@
 (asdf:defsystem #:musik
   :depends-on (#:osc #:sb-bsd-sockets)
   :components ((:file "osc")
+	       (:file "supercollider")
 	       (:file "theory")
 	       (:file "lang")))

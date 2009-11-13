@@ -7,16 +7,6 @@
 (defvar *port* 57110)
 (setf *port* 57110)
 ;(setf *port* 7000)
-
-(defmacro nlet (n letargs &body body)
-  `(labels ((,n ,(mapcar #'car letargs)
-              ,@body))
-     (,n ,@(mapcar #'cadr letargs))))
-
-(defun next-node ()
-  (if (= (incf *node*) *node-max*)
-      (setf *node* 2))
-  *node*)
       
 (setf *socket* (make-instance 'inet-socket 
 			      :protocol :udp 
@@ -31,11 +21,18 @@
      (subsecs)
      (or future 0)))
 
+(defun hack (message value)
+  "hack to get offset part from message.. FIXME"
+  (let ((pos (position value message :test 'equal)))
+    (if pos
+	(nth (+ pos 1) message)
+	0)))
+
 (defun send (timetag message)
   (dolist (x (unpack message))
     (let* ((offset (if timetag
-		       (+ timetag (or (getf x :offset) 0))))
-	   (bundle (encode-bundle (makeosc x) offset)))
+		       (+ timetag (or (hack x "offset") 0))))
+	   (bundle (encode-bundle x offset)))
       (socket-send *socket* bundle
 		   (length bundle)
 		   :address `(#(127 0 0 1) ,*port*)))))
@@ -43,17 +40,20 @@
 (defun sendnow (messages)
   (send (now 0.5) messages))
 
-(defun makeosc (msg)
-  (let ((list (list (getf msg :type)
-		    (eval (getf msg :name))
-		    (next-node) 0 1)))
-    (nlet deplist ((plist msg))
-	  (case (first plist)
-	    ((:type :name)
-	     nil)
-	    (t
-	     (nconc list (list (format nil "~(~a~)" (symbol-name (first plist))) ;; lowercase..
-			       (eval (second plist))))))
-	  (if (cddr plist)
-	      (deplist (cddr plist))))
-	list))
+(defgeneric unpack (item)
+  ; takes an item and returns a list of osc-messages
+  (:method ((item collection))
+    (reduce (lambda (x y)
+	      (nconc x (unpack y)))
+	    (slot-value item 'items)
+	    :initial-value nil))
+  (:method ((item seq))
+    (setf (slot-value item 'items)      
+	  (let ((offset 0))
+	    (map 'list (lambda (a)
+			 (let ((off (++i offset (len a))))
+			   ;; this is to evaluate ++i only once as opposed to
+			   ;; once per lambda-evaluation
+			   (setval :offset (lambda (x) (+ (or x 0) off)) a)))
+		 (slot-value item 'items))))
+    (call-next-method)))
