@@ -1,12 +1,6 @@
 (in-package :musik)
 
 (defvar *socket*)
-(defvar *node* 2)
-(defvar *node-max* 1024)
-
-(defvar *port* 57110)
-(setf *port* 57110)
-;(setf *port* 7000)
 
 (defclass target ()
   ((url  :initarg :url)
@@ -27,13 +21,6 @@
      (get-universal-time)
      (subsecs)
      (or future 0)))
-
-(defun hack (message value)
-  "hack to get offset part from message.. FIXME"
-  (let ((pos (position value message :test 'equal)))
-    (if pos
-	(nth (+ pos 1) message)
-	0)))
 
 (defun send (timetag message)
   (dolist (x (unpack message))

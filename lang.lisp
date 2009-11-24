@@ -20,6 +20,14 @@
 (defun seq (&rest items)
   (make-instance 'seq :items items))
 
+(defmacro ++i (place amount)
+  (multiple-value-bind (temps values store writeform readform) (get-setf-expansion place)
+    `(let ,(loop for temp in temps for value in values :collect (list temp value))
+       (let* ((old ,readform)
+	      (,(first store) (+ old ,amount)))
+	 ,writeform
+	 old))))
+
 (defmacro n (number item)
   (let ((counter (gensym)))
     (if (listp number)
@@ -39,13 +47,8 @@
       `(apply 'join (n ,number ,(first item)))
       (error "one argument only")))
 
-(defmacro ++i (place amount)
-  (multiple-value-bind (temps values store writeform readform) (get-setf-expansion place)
-    `(let ,(loop for temp in temps for value in values :collect (list temp value))
-       (let* ((old ,readform)
-	      (,(first store) (+ old ,amount)))
-	 ,writeform
-	 old))))
+(defun oneof (&rest alternatives)
+  (nth (random (length alternatives)) alternatives))
 
 (defgeneric copy-instance (item)
   (:method ((item message))
@@ -63,27 +66,28 @@
 	 (setf temp-item (setval key val temp-item)))
     temp-item))
 
-(defgeneric setval (key value item)
-  (:method (key value (item collection))
+(defgeneric setval (key val item)
+  (:method (key val (item collection))
     (setf (slot-value item 'items)
-	  (map 'list (lambda (x) (setval key value x)) (slot-value item 'items)))
+	  (map 'list (lambda (x) (setval key val x)) (slot-value item 'items)))
     item)
-  (:method (key value (item message))
+  (:method (key val (item message))
+    (format t "key: ~a val: ~a~%" key val)
     (let ((copy (copy-instance item)))
-      (if (functionp value)
-	  (setf (getf (slot-value copy 'value) key) 
-		(funcall value (getf (slot-value copy 'value) key)))
-	  (setf (getf (slot-value copy 'value) key) value))
+      (with-slots (value) copy
+	(if (functionp val)
+	    (setf (getf value key) 
+		  (funcall val copy))
+	  (setf (getf value key) val)))
       copy)))
 
 (defgeneric len (item)
   (:method ((item message))
-    (or (eval (getval item :length)) 1))
+    (or (eval (getval item :len)) 1))
   (:method ((item join))
     (apply 'max (map 'list (lambda (x) (len x)) (slot-value item 'items))))
   (:method ((item seq))
     (reduce (lambda (x y) (+ x (len y))) (slot-value item 'items) :initial-value 0)))
-
 
 (defgeneric unpack (item)
   ; return all the leaves in tree
@@ -99,9 +103,20 @@
 			 (let ((off (++i offset (len a))))
 			   ;; this is to evaluate ++i only once as opposed to
 			   ;; once per lambda-evaluation
-			   (setval :offset (lambda (x) (+ (or x 0) off)) a)))
+			   (setval :offset (lambda (x) (+ (or (getval x :offset) 0) off)) a)))
 		 (slot-value item 'items))))
     (call-next-method))
   (:method ((item message))
     (list item)))
     
+(defmacro defmessage (name (kind &rest default))
+  (let ((key (gensym)) (val (gensym)) (orig (gensym)) (additional (gensym)))
+    `(defun ,name (&rest ,additional)
+	    (make-instance ,kind
+			   :value (let ((,orig ',default))
+				    (loop for (,key ,val) on ,additional by #'cddr
+				       :do (setf (getf ,orig ,key) ,val))
+				    ,orig)))))
+
+(defun scale (scale what)
+  (setval :len (lambda(x) (* (or (getval x :len) 1) scale 1.0)) what))

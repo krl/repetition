@@ -10,11 +10,14 @@
   (make-instance 'sc-message 
 		 :value value))
 
+(defvar *sc-node* 2)
+(defvar *sc-node-max* 1024)
+
 (defun next-node ()
   "keeps track of used node id:s"
-  (if (= (incf *node*) *node-max*)
-      (setf *node* 2))
-  *node*)
+  (if (= (incf *sc-node*) *sc-node-max*)
+      (setf *sc-node* 2))
+  *sc-node*)
 
 (defmethod makeosc ((item sc-message))
   ; takes an item and returns a list formatted as an OSC packet
