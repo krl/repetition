@@ -72,7 +72,7 @@
 	  (map 'list (lambda (x) (setval key val x)) (slot-value item 'items)))
     item)
   (:method (key val (item message))
-    (format t "key: ~a val: ~a~%" key val)
+    ;(format t "key: ~a val: ~a~%" key val)
     (let ((copy (copy-instance item)))
       (with-slots (value) copy
 	(if (functionp val)
@@ -108,6 +108,13 @@
     (call-next-method))
   (:method ((item message))
     (list item)))
+
+(defun unpackedlen (list)
+  (reduce (lambda (x y) 
+	    (max x (+ (or (getval y :offset) 0) 
+		      (or (getval y :len) 1))))
+	  list
+	  :initial-value 0))
     
 (defmacro defmessage (name (kind &rest default))
   (let ((key (gensym)) (val (gensym)) (orig (gensym)) (additional (gensym)))
@@ -120,3 +127,18 @@
 
 (defun scale (scale what)
   (setval :len (lambda(x) (* (or (getval x :len) 1) scale 1.0)) what))
+
+
+;; optehmize this?
+(defmacro with-len (bind body extra)
+  (let ((unpacked (gensym)))
+    `(let* ((,unpacked (unpack ,body))
+	    (,bind (unpackedlen ,unpacked)))
+       (join (apply 'join ,unpacked)
+	   ,extra))))
+
+;; ;; opthemize this?
+;; (defmacro with-unpack (bind body extra)
+;;   `(let ((,bind (unpack ,body)))
+;;      (join ,body
+;; 	   ,extra)))

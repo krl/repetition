@@ -31,10 +31,12 @@
 		   (length bundle)
 		   :address (slot-value x 'target)))))
 
+
 (defun sendnow (messages)
-  (send (now 0.5) messages))
+  (let ((time (now 0.5)))
+    (send time messages)
+    time))
 
 (defgeneric makeosc (item)
   ; takes an item and returns a list formatted as an OSC packet
-  ; TODO, figure out what the "0 1" is all about..
   )

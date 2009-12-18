@@ -10,6 +10,9 @@
 	       (:module "msgtypes" :depends-on ("osc")
 			:components
 			((:file "supercollider")
+			 (:file "ksamp")
 			 (:file "sooperlooper")))
 	       (:file "theory")
-	       (:file "lang")))
+	       (:file "lang")
+	       (:file "loop")))
+

@@ -5,7 +5,8 @@
 (setf *major* (make-instance 'major :base 60))
 (setf *minor* (make-instance 'scale :base 20 :intervals '(2 1 2 2 2 1 2)))
 
-(defmessage wobb ('sc-message :name "basen" :amp 0.2))
+(defmessage wobb  ('sc-message :name "basen" :amp 0.2))
+(defmessage skrän ('sc-message :name "skren" :amp 0.2))
 
 (defmessage kick  ('sc-message :name "kick"))
 (defmessage snare ('sc-message :name "snare"))
@@ -19,42 +20,53 @@
 ;; 		  (seq (ass :freq (freq *minor* (+ 5 y (* x 4))) *skrän*))))))
 
 (sendnow 
- (seq-n 8
+ (seq-n 16
    (ass :sustain (lambda (x) (getval x :len))
 	:wobfreq (lambda (x) (or (getval x :wobfreq) (/ 1.0 (or (getval x :len) 1))))
 	:freq    (lambda (x) (freq *minor* (or (getval x :note) 0)))
 	(scale 0.7
-	  (join	   
-	   (seq-n (y 5)
+	  (join 
+	   (seq-n (y 5)	     
 	     (join
-	      (let ((rand (zerop (random 2))))
+	      (let ((l (oneof 1.5 0.5)))
 		(join-n (x 4)
-		  (seq 		
+		  (seq
 		   (wobb :len 1   :amp (/ 1.0 (+ x 1)) :note (+ 6 (* x 10) (* y 3)))
-		   (if rand
-		       (wobb :len 1.5 :amp (/ 1.0 (+ x 1)) :note (+ 2 (* x 10) (* y 2)))
-		       (wobb :len 0.5 :amp (/ 1.0 (+ x 1)) :note (+ 2 (* x 10) (* y 2))))
+		   (wobb :len l   :amp (/ 1.0 (+ x 1)) :note (+ 2 (* x 10) (* y 2)))
 		   (wobb :len 0.5 :amp (/ 1.0 (+ x 1)) :note (+ 1 (* x 10) (* y 4))))))
-	      (seq (kick :len 0.5) (kick :len 0.5) (snare))))
-	   (crash))))))
+	      (seq (seq-n 2 (kick :len 0.5)) (snare))))
+	     (crash))))))
 	  
 (sendnow (seq-n 100
 	  (let ((pitch (random 10)))
 	    (join
 					; phazor
 	     (join-n (phase 4)
-	       (ass :freq (+ (* (freq *minor* 5) (+ pitch 3)) phase)
-		    :amp 0.2
-		    :sustain 4
-		    *skrän*))
+	       (skrän :freq (+ (* (freq *minor* 5) (+ pitch 3)) phase)
+		      :amp 0.04
+		      :sustain 4))
 					; wobba
-	     (seq
-	      (ass :freq (freq *minor* 2)
-		   :wobfreq 1
-		   (seq-n 3 *wobb*))
-	      (ass :freq (freq *minor* pitch)
-		   :wobfreq 3
-		   *wobb*))
+	      (seq	     
+	       (seq-n 3
+		 (wobb :freq (freq *minor* 2)
+		       :wobfreq 1))
+	       (wobb :freq (freq *minor* pitch)
+		     :wobfreq 3))
 					; trum
-	     (ass :amp 1
-		  (seq (join *kick* (ass :amp 0.1 *crash*)) *kick* *snare*))))))
+	      (seq (join (kick) (crash :amp 0.3)) (kick) (snare))))))
+
+(sendnow (kick))
+
+(sendnow (with-len len
+	   (seq (kick) (kick))
+	   (seq-n len
+	     (kick :len 0.5))))
+
+(makeosc (third (unpack (with-len len
+			  (seq (kick) (kick :len 4))
+			  
+			  (seq-n 2 (kick))))))
+
+(unpack (apply 'join (UNPACK (SEQ (KICK) (KICK)))))
+
+(setf *break-on-signals* nil)
