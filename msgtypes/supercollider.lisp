@@ -1,36 +1,26 @@
-
-;; message type for supercollider synthdefs
-
 (in-package :musik)
 
-(defclass sc-message (message) 
-  ((target :initform '(#(127 0 0 1) 57110))))
+(defparameter *sc-node* 0)
+(defparameter *sc-node-max* 1024)
 
-(defun sc-message (&rest value)
-  (make-instance 'sc-message 
-		 :value value))
+(defun sc-nextnode ()
+  (when (> *sc-node* *sc-node-max*)
+    (setf *sc-node* 0))
+  (incf *sc-node*))
 
-(defvar *sc-node* 2)
-(defvar *sc-node-max* 1024)
+(defproto =sc-event= (=event=)
+  ((target '(#(127 0 0 1) 57110))))
 
-(defun next-node ()
-  "keeps track of used node id:s"
-  (if (= (incf *sc-node*) *sc-node-max*)
-      (setf *sc-node* 2))
-  *sc-node*)
+;; sc-new
 
-(defmethod makeosc ((item sc-message))
-  ; takes an item and returns a list formatted as an OSC packet
-  ; TODO, figure out what the "0 1" is all about..
-  (with-slots (value) item
-    (let ((osc (list "/s_new"
-  		     (or (getf value :name) (error "sc-message requires :name value"))
-  		     (next-node) 0 1)))
-      (loop for (key val) on value by #'cddr 
-	 :do (case key
-	       (:name
-		nil)
-	       (t
-		(nconc osc (list (format nil "~(~a~)" (symbol-name key)) ;; lowercase..
-				 val)))))
-      osc)))
+(defproto =sc-new= (=sc-event=)
+  ((name nil)
+   (id nil)))
+
+(defreply makeosc ((event =sc-new=))
+  (setf (id event) (sc-nextnode))
+  (list (object :parents (list =osc-message= event)
+		:properties `((message ("/s_new"
+					,(or (name event) (error "sc-new needs name"))
+					,(sc-nextnode)
+					0 1))))))

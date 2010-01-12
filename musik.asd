@@ -1,18 +1,15 @@
 (require :osc)
 (require :sb-bsd-sockets)
+(require :sheeple)
 
 (defpackage :musik
-  (:use :cl :sb-bsd-sockets :osc))
+  (:use :cl :sb-bsd-sockets :osc :sheeple))
 
 (asdf:defsystem #:musik
-  :depends-on (#:osc #:sb-bsd-sockets)
+  :depends-on (#:osc #:sb-bsd-sockets #:sheeple)
   :components ((:file "osc")
-	       (:module "msgtypes" :depends-on ("osc")
+	       (:file "lang" :depends-on ("osc"))
+	       (:module "msgtypes"
 			:components
-			((:file "supercollider")
-			 (:file "ksamp")
-			 (:file "sooperlooper")))
-	       (:file "theory")
-	       (:file "lang")
-	       (:file "loop")))
-
+			((:file "ksamp")
+			 (:file "supercollider")))))

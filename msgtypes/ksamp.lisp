@@ -1,17 +1,23 @@
-
-;; message type for supercollider synthdefs
-
 (in-package :musik)
 
-(defclass ks-message (message) 
-  ((target :initform '(#(127 0 0 1) 7000))))
+;;; specialized ksamp events
 
-(defmessage ks-load ('ks-message :type "/ks_load"))
-(defmessage ks-play ('ks-message :type "/ks_play"))
+(defproto =ksamp-event= (=event=)
+  ((target '(#(127 0 0 1) 7000))
+   (id 0)
+   (path "")))
 
-(defmethod makeosc ((item ks-message))
-  ; takes an item and returns a list formatted as an OSC packet
-  ; TODO, figure out what the "0 1" is all about..
-  (with-slots (value) item
-    (list (or (getf value :type) (error "ks-message requires :type value"))
-	  (or (getf value :path) (error "sc-message requires :path value")))))
+(defproto =ksamp-play= (=ksamp-event=))
+(defproto =ksamp-playtrim= (=ksamp-play=))
+
+(defreply makeosc ((event =ksamp-play=))
+	  (list (object :parents (list =osc-message= event)
+			:properties `((message ("/ksamp_play" ,(path event) ,(id event)))))))
+
+(defreply makeosc :around ((event =ksamp-playtrim=))
+	  (setf (id event) 3)
+	  (print (list (timetag event) (len event)))
+	  (nconc (call-next-reply)
+		 (list (object :parents (list =osc-message= event)
+			       :properties `((message ("/ksamp_stop" ,(path event) ,(id event)))
+					     (len 0))))))
