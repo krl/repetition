@@ -15,8 +15,8 @@
      (subsecs)
      (or future 0)))
 
-(defun send (timetag message)
-  (dolist (x (makeosc message))
+(defun sendraw (timetag messages)
+  (dolist (x messages)
     (let* ((offset (if timetag
 		       (+ timetag (or (timetag x) 0))))
 	   (bundle (encode-bundle (message x) offset)))
@@ -24,9 +24,12 @@
 		   (length bundle)
 		   :address (target x)))))
 
-(defun sendnow (messages)
-  (let ((time (now 0.5)))
-    (send time messages)
+(defun send (timetag message)
+  (sendraw timetag (makeosc message)))
+
+(defun sendnow (message)
+  (let ((time (now 1)))
+    (send time message)
     time))
 
 (defproto =osc-message= ()

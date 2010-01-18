@@ -60,3 +60,21 @@
 
 (defun join (&rest arglist)
   (collection =join= arglist))
+
+(defun n (iter method arglist)
+  (let ((i (gensym)))
+    `(apply ',method
+	    (loop for ,i from 0 below ,iter :collect
+		 (funcall 'seq ,@arglist)))))
+
+(defmacro join-n (number &body arglist)  
+  (n number 'join arglist))
+
+(defmacro seq-n (number &body arglist)
+  (n number 'seq arglist))
+
+(defmacro seqlet (args &body body)
+  `(let ,args (seq ,@body)))
+
+(defmacro joinlet (args &body body)
+  `(let ,args (join ,@body)))
