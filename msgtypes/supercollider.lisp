@@ -26,7 +26,6 @@
 (defreply sc-args ((event =sc-event=))
   (map 'list (lambda (x) (if (keywordp x) (format nil "~(~A~)" x) x)) (args event)))
 
-
 (defmessage sc-create (event)
   (:documentation "convenience message for making sc-objects with arguments"))
 
@@ -41,8 +40,8 @@
 	       (t (error "Malformed sc-create arglist"))))
 
     (object :parents (list event)
-	    :properties (print (nconc (list (list 'args sc-args))
-			       properties)))))
+	    :properties (nconc (list (list 'args sc-args))
+			       properties))))
   
 (defreply makeosc ((event =sc-new=))
   (setf (id event) (sc-nextnode))
