@@ -1,5 +1,7 @@
-
 s.reboot;
+
+s.dumpOSC(1);
+s.dumpOSC(0);
 
 (
 SynthDef("basen", {|freq = 100, pan = 0, amp = 0.3, sustain = 1, wobfreq = 10 |
@@ -13,5 +15,14 @@ SynthDef("basen", {|freq = 100, pan = 0, amp = 0.3, sustain = 1, wobfreq = 10 |
 
 	Out.ar(0,lowpass * amp * env);
 		
+}).send(s);
+)
+
+(
+SynthDef("playbuf", { |buffer = 1, pan = 0, amp = 0.5 |	
+	Out.ar(0, 
+		Pan2.ar(
+			PlayBuf.ar(1, buffer, doneAction: 2),
+			pan) * amp);
 }).send(s);
 )

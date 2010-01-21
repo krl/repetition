@@ -28,9 +28,7 @@
   (sendraw timetag (makeosc message)))
 
 (defun sendnow (message)
-  (let ((time (now 1)))
-    (send time message)
-    time))
+  (send nil message))
 
 (defproto =osc-message= ()
   ((message nil)))
