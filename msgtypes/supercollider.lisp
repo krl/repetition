@@ -9,8 +9,7 @@
   (incf *sc-node*))
 
 (defproto =sc-event= (=event=)
-  ((target '(#(127 0 0 1) 57110))
-   (args nil)))
+  ((target '(#(127 0 0 1) 57110))))
 
 ;; sc-new
 
@@ -18,26 +17,38 @@
   ((name nil)
    (id nil)))
 
-;; convenience messages
-
-(defmessage sc-args (event)
-  (:documentation "get arguments in sc form"))
-
-(defreply sc-args ((event =sc-event=))
-  (let ((args nil))
-    (dolist (x (available-properties event))
-      (when (keywordp x)
-	(setf args (nconc args (list (format nil "~(~A~)" x) 
-				     (property-value event x))))))
-    args))
-
-(sc-args (m =sc-new= 'test 2 :arg 2))
-
 (defreply makeosc ((event =sc-new=))
-  ;(setf (id event) (sc-nextnode))
-  (list (object :parents (list =osc-message= event)
-		:properties `((message ,(nconc (list "/s_new"
-						     (or (name event) (error "sc-new needs name"))
-						     -1
-						     0 1)
-					       (sc-args event)))))))
+  (list (m (list =osc-message= event)
+	   'message (nconc (list "/s_new"
+				 (or (name event) (error "sc-new needs name"))
+				 -1
+				 0 1)))))
+
+(defmacro synthdef (name args &body body)
+  (when (not (= (length body) 1)) (error "synthdef takes exactly one body form"))
+  (let* ((namestring (format nil "~(~A~)" name))
+	 (sclang (flatstr
+		  "(SynthDef('" namestring "', {|"
+		  (loop for x in args for i from 0 :collect (format nil "~A~(~A~) = ~A" (if (zerop i) "" ", ") (first x) (second x)))
+		  "|"
+		  (convert (first body))
+		  "})).send(s)")))
+    ;; send the definition
+    ;; (sendnow (m =sc-synthdef= 'definition sclang))
+    (send-sc-command sclang)
+    ;; create actual event object
+    `(progn 
+       (defproto ,name (=sc-new=)
+	 ,args)
+       (defreply makeosc ((event ,name))
+	 (let ((next-reply (call-next-reply)))
+	   ;; modify message
+	   (nconc (message (first next-reply)) 
+		  (reduce (lambda (x y)
+			    (let ((symbol (if (listp y) (first y) y)))
+			      (nconc x (list
+					(format nil "~(~a~)" symbol)
+				      (or (property-value event symbol) (second y))))))
+			  (quote ,(nconc args `((name ,namestring))))
+			  :initial-value nil))
+	   next-reply)))))

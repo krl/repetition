@@ -17,7 +17,7 @@
 
 (defun sendraw (timetag messages)
   (dolist (x messages)
-    (let* ((offset (if timetag
+    (let* ((offset (when timetag
 		       (+ timetag (or (timetag x) 0))))
 	   (bundle (encode-bundle (message x) offset)))
       (socket-send *socket* bundle
