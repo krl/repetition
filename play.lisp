@@ -8,6 +8,7 @@
 (defmacro play (what)
   (eval what) ; catch errors here
   (setf *playing* what)
+  (format t "playing: ~a~%" *playing*)
   `(progn
      (unless *loopthread*
        (setf *loopthread* (sb-thread:make-thread 'loopthread)))))
@@ -30,11 +31,9 @@
 	       (loop while (> time (- *latest* *latency*))
 		  :do 
 		  ;; time to add more
-		    (format t "playing: ~a~%" *playing*)
-		    (let ((evaluated (makeosc (eval *playing*))))
+		    (let ((evaluated (flatten (eval *playing*))))
 		      (sendraw *latest* evaluated)
-		      (incf *latest* (osclen evaluated)))))
-		 
+		      (incf *latest* (flatlen evaluated)))))		 
 	     (sleep (* *latency* 0.1)))
        (format t "loop thread quit~%")
        (setf *loopthread* nil)))

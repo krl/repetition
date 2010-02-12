@@ -15,40 +15,26 @@
 
 (defproto =sc-new= (=sc-event=)
   ((name nil)
-   (id nil)))
+   (argref nil)))
 
 (defreply makeosc ((event =sc-new=))
-  (list (m (list =osc-message= event)
-	   'message (nconc (list "/s_new"
-				 (or (name event) (error "sc-new needs name"))
-				 -1
-				 0 1)))))
+  (append (list "/s_new"
+		(or (name event) (error "sc-new needs name")) -1 0 1)
+	  (reduce (lambda (x y)
+		    (append x (list (format nil "~(~a~)" y)
+				    (property-value event y))))
+		  (argref event)
+		  :initial-value nil)))
 
 (defmacro synthdef (name args &body body)
-  (when (not (= (length body) 1)) (error "synthdef takes exactly one body form"))
-  (let* ((namestring (format nil "~(~A~)" name))
-	 (sclang (flatstr
-		  "(SynthDef('" namestring "', {|"
-		  (loop for x in args for i from 0 :collect (format nil "~A~(~A~) = ~A" (if (zerop i) "" ", ") (first x) (second x)))
-		  "|"
-		  (convert (first body))
-		  "})).send(s)")))
-    ;; send the definition
-    ;; (sendnow (m =sc-synthdef= 'definition sclang))
-    (send-sc-command sclang)
-    ;; create actual event object
-    `(progn 
-       (defproto ,name (=sc-new=)
-	 ,args)
-       (defreply makeosc ((event ,name))
-	 (let ((next-reply (call-next-reply)))
-	   ;; modify message
-	   (nconc (message (first next-reply)) 
-		  (reduce (lambda (x y)
-			    (let ((symbol (if (listp y) (first y) y)))
-			      (nconc x (list
-					(format nil "~(~a~)" symbol)
-				      (or (property-value event symbol) (second y))))))
-			  (quote ,(nconc args `((name ,namestring))))
-			  :initial-value nil))
-	   next-reply)))))
+  (let (;; convert arg without default to (arg nil)
+	(args (map 'list (lambda (x) (if (listp x) x (list x nil))) args))
+	(body (if (= (length body) 1) 
+		  (first body) 
+		  (error "synthdef takes exactly one body form"))))
+    (send-sc-command-cached name (format nil "(SynthDef('~(~a~)', {|~:{~(~a~)~@[ = ~a~]~:^, ~} | ~a})).send(s)" name args body))
+    ;; create actual event object)
+    `(defproto ,name (=sc-new=)
+       ,(nconc `((name ,(format nil "~(~a~)" name))
+    		 (argref ',(map 'list 'first args)))
+    	       args))))

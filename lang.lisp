@@ -12,25 +12,33 @@
 (defproto =join= (=collection=))
 (defproto =seq= (=collection=))
 
+(defproto =filter= (=event=)
+  ((transform nil)
+   (source nil)))
+	  
 ;;; message handling
 
-(defmessage makeosc (event)
-  (:documentation "makeosc should return a list of osc-events")
+(defmessage flatten (event)
+  (:documentation "flatten should return a list of osc-events")
   
+  (:reply ((event =event=))
+	  ;; most general, returns itself only
+	  (list event))
+
   (:reply ((event =seq=))
 	  (let ((offset 0))
 	    (reduce (lambda (x y)
 		      ;; depth-first reduce, this is to be able
 		      ;; to calculate the length of the sub-elements
 		      ;; correctly. length is not neccesarily the same 
-		      ;; on each makeosc-call
-		      (let* ((osclist (makeosc y))
-			     (len (osclen osclist))
+		      ;; on each flatten-call
+		      (let* ((osclist (flatten y))
+			     (len (flatlen osclist))
 			     (result 
 			      ;; offset each element inside by the accumulated offset
 			      (map 'list
 				   (lambda (e)
-				     (create e 'timetag (+ (timetag e) offset)))
+				     (m e 'timetag (+ (timetag e) offset)))
 				   osclist)))
 			(incf offset len)
 			(nconc x result)))
@@ -39,13 +47,13 @@
 
   (:reply ((event =collection=))
 	  (reduce (lambda (x y)
-		    (nconc x (makeosc y)))
+		    (nconc x (flatten y)))
 		  (children event)
 		  :initial-value '())))
 
 ;;; DSL functions
 
-(defun osclen (list)
+(defun flatlen (list)
   (reduce (lambda (x y)	    
 	    (max x (+ (len y) (timetag y))))
 	  list
@@ -78,3 +86,25 @@
 
 (defmacro joinlet (args &body body)
   `(let ,args (join ,@body)))
+
+(defmacro ass (assignments &body body)
+  `(m =filter= 
+      'source (seq ,@body)
+      'transform (lambda (list)
+		   (map 'list (lambda (x)
+				(object :parents (list x)
+					:properties (quote ,assignments)))
+			list))))
+
+;; filters 
+
+(defmacro deffilter (name arg &body body)
+  (unless (symbolp (first arg)) (error "must provide one argument"))
+  `(defun ,name (&rest source)
+	  (m =filter=
+	     'source (apply 'seq source)
+	     'transform (lambda ,arg
+			  ,@body))))
+
+(defreply flatten ((event =filter=))
+  (funcall (transform event) (flatten (source event))))

@@ -1,13 +1,14 @@
 (asdf:defsystem #:musik
   :depends-on (#:osc #:sb-bsd-sockets #:sheeple)
+  :serial t
   :components ((:file "musik")
-	       (:file "osc"     :depends-on ("musik"))
-	       (:file "lang"    :depends-on ("osc"))
-	       (:file "play"    :depends-on ("lang"))
-	       (:file "helpers" :depends-on ("lang"))
-	       (:file "sclang"  :depends-on ("helpers"))
+	       (:file "lang")
+	       (:file "osc")
+	       (:file "play")
+	       (:file "helpers")
+	       (:file "sclang")
 	       (:module "msgtypes"
-			:depends-on ("helpers")
+			:serial t
 			:components
 			((:file "supercollider")
-			 (:file "sample" :depends-on ("supercollider"))))))
+			 (:file "sample")))))

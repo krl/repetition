@@ -18,17 +18,22 @@
 (defun sendraw (timetag messages)
   (dolist (x messages)
     (let* ((offset (when timetag
-		       (+ timetag (or (timetag x) 0))))
-	   (bundle (encode-bundle (message x) offset)))
+		     (+ timetag (or (timetag x) 0))))
+	   (bundle (encode-bundle (makeosc x) offset)))
+      ;xo(format t "~a ~%" (- offset (or timetag 0)))
       (socket-send *socket* bundle
 		   (length bundle)
 		   :address (target x)))))
 
 (defun send (timetag message)
-  (sendraw timetag (makeosc message)))
+  (format t "~a" (list 'send timetag message))
+  (sendraw timetag (flatten message)))
 
 (defun sendnow (message)
+  (format t "~a" (list 'sendnow message))
   (send nil message))
 
-(defproto =osc-message= ()
-  ((message nil)))
+(defmessage makeosc (event)
+  ;; default heißt error!
+  (:reply ((event =event=))
+	  (error "no makeosc for ~a" event)))

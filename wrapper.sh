@@ -1,5 +1,5 @@
 killall sclang scsynth;
-/tmp/sclangfifo;
+rm /tmp/sclangfifo;
 mkfifo /tmp/sclangfifo;
-tail -f /tmp/sclangfifo | sclang;
+tail -f /tmp/sclangfifo | sclang | grep -v ^DLL;
 

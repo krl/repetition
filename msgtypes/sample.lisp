@@ -10,23 +10,18 @@
     (setf *sc-buffer* 0))
   (incf *sc-buffer*))
 
-(defproto =sample= (=sc-new=)
-  ((name "playbuf")
-   (buffer nil)
-   (path nil)))
+(synthdef =sample= ((buffer nil) (path nil) (pan 0) (amp 0.5))
+  !(Out.ar
+    0 (* (Pan2.ar (PlayBuf.ar 1 buffer :doneAction 2)
+		  pan)
+	 amp)))
 
 (defproto =sample-read= (=sample=))
 
 (defreply makeosc ((event =sample-read=))  
-  (let ((msg (list "/b_allocRead" (buffer event) (or (path event) (error "sample needs path")))))
-    (list
-     (object :parents (list =osc-message= event)
-	     :properties `((message ,msg))))))
+  (list "/b_allocRead" (buffer event) (or (path event) (error "sample needs path"))))
 
-(defreply makeosc ((event =sample=))
-  (call-next-reply (m event :buffer (buffer event))))
-
-;; conveniance macros
+;; conveniance macro
 (defmacro samples (&body args)
   (cons 'progn
 	(loop for (key val) on args by #'cddr :collect
@@ -34,4 +29,4 @@
 		       ((path ,val)
 			(buffer (sc-nextbuffer))))
 		     ;; read the file into supercollider
-		     (sendnow (defobject (=sample-read= ,key)))))))
+		     (sendnow (m (list =sample-read= ,key)))))))

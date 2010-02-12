@@ -2,19 +2,19 @@
 
 ;; parameters
 
-(defconstant +token-print-cmd-line+ #\Esc)
-
 (defparameter *sclang-process* nil)
 (defparameter *sclang-keywords* nil)
-(defparameter *sclang-converters* nil)
+(defparameter *sclang-converters* (make-hash-table :test 'equal))
+(defparameter *sclang-cache* (make-hash-table))
 
 ;; case sensitive reader macro
 
 (set-macro-character #\!
 		     #'(lambda (stream char)
-			 (let ((*readtable* (copy-readtable)))
-			   (setf (readtable-case *readtable*) :preserve)
-			   (read stream t nil t))))
+			 (convert
+			  (let ((*readtable* (copy-readtable)))
+			    (setf (readtable-case *readtable*) :preserve)
+			    (read stream t nil t)))))
 
 ;; helper functions
 
@@ -29,17 +29,25 @@
 ;; process
 
 (defun sclang-start ()
-  (sb-ext:run-program "/bin/sh" '("wrapper.sh") :input :stream :output t :error t :wait nil)
+  (sb-ext:run-program "/bin/sh" '("/home/krille/hax/musik/wrapper.sh") :input :stream :output t :error t :wait nil)
+  (sleep 2)
+  (send-sc-command "s.reboot")
   (sleep 10)
-  (send-sc-command "s.reboot"))
+  (maphash (lambda (x y) 
+	     (send-sc-command y)) *sclang-cache*))
 
 (when nil (sclang-start))
 
+(defun send-sc-command-cached (index command)
+  (setf (gethash index *sclang-cache*) command)
+  (send-sc-command command))
+
 (defun send-sc-command (command)
-  (format t "sending command: ~a~%" command)
+  (format t "Sending command:~%~a~%" command)
   (with-open-file (foo "/tmp/sclangfifo" 
 		       :direction :output 
-		       :if-exists :append)
+		       :if-exists :append
+		       :if-does-not-exist nil)
     (write-line command foo)))
 
 ;; converters
@@ -57,9 +65,8 @@
 (defun convert (form)
   (cond ((listp form)
 	 (apply
-	  (or (getf *sclang-converters* (first form))
+	  (or (gethash (format nil "~(~a~)" (first form)) *sclang-converters*)
 	      (lambda (&rest args)
-		(print args)
 		;; convert to fun(arg, arg, arg)
 		(flatstr (format nil "~a" (first form)) "(" (commasep args) ")")))
 	  (loop for x in (rest form) :collect (convert x))))
@@ -68,16 +75,13 @@
 	((or (numberp form) (symbolp form))
 	 (format nil "~a" form))))
 
-(defmacro sclang (form)
-  "to aviod having to manually quote lists"
-  (if (listp form)
-      `(convert (quote ,form))
-      `(convert ,form)))
-
 (defmacro defconverter (symbol args &body body)
-  `(setf (getf *sclang-converters* (quote ,symbol))
+  `(setf (gethash (format nil "~(~a~)" ',symbol) *sclang-converters*)
 	 (lambda ,args
 	   ,@body)))
+
+(defconverter list (&rest args)
+    (flatstr "[" (commasep args) "]"))
 
 (defmacro definfix (symbol)
   `(defconverter ,symbol (&rest args)
@@ -93,5 +97,5 @@
   (definfix -)
   (definfix *)
   (definfix /)
-  (defconverter !list (&rest args)
+  (defconverter list (&rest args)
     (flatstr "[" (commasep args) "]")))
