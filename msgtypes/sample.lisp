@@ -10,9 +10,9 @@
     (setf *sc-buffer* 0))
   (incf *sc-buffer*))
 
-(synthdef =sample= ((buffer nil) (path nil) (pan 0) (amp 0.5))
+(synthdef =sample= ((buffer nil) (path nil) (pan 0) (amp 0.5) (rate 1))
   !(Out.ar
-    0 (* (Pan2.ar (PlayBuf.ar 1 buffer :doneAction 2)
+    0 (* (Pan2.ar (PlayBuf.ar 1 buffer rate :doneAction 2)
 		  pan)
 	 amp)))
 

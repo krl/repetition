@@ -5,6 +5,12 @@
 (defvar *playing* nil)
 (defvar *loopthread* nil)
 
+(defmacro playonce (what)
+  `(progn
+     (play ,what)
+     (sleep (/ *latency* 4))
+     (stop)))
+
 (defmacro play (what)
   (eval what) ; catch errors here
   (setf *playing* what)

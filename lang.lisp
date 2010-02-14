@@ -88,13 +88,30 @@
   `(let ,args (join ,@body)))
 
 (defmacro ass (assignments &body body)
+  ;; these assignments should be evaluated once for each call 
+  ;; to flatten and be the same for each filter source
   `(m =filter= 
       'source (seq ,@body)
-      'transform (lambda (list)
-		   (map 'list (lambda (x)
-				(object :parents (list x)
-					:properties (quote ,assignments)))
-			list))))
+      'transform
+      (lambda (list)
+	(let ((properties (map 'list
+			       (lambda (x) (list (first x) 
+					    ;; if second is a lambda, store it for later execution
+					    ;; othervise evaluate it before proceeding.
+					    (if (functionp (second x))
+						(second x)
+						(eval (second x)))))
+			     ',assignments)))
+	  (map 'list (lambda (x) 
+		       (let ((object (m x)))
+			 (dolist (p properties)
+			   (setf (property-value object (first p))
+				 ;; if second is a lambda, execute it with current object as argument
+				 (if (functionp (second p))
+				     (funcall (second p) object)
+				     (second p))))
+			 object))
+	       list)))))
 
 ;; filters 
 
