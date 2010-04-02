@@ -18,7 +18,7 @@
 
 (defproto =sample-read= (=sample=))
 
-(defreply makeosc ((event =sample-read=))  
+(defreply makeosc ((event =sample-read=))
   (list "/b_allocRead" (buffer event) (or (path event) (error "sample needs path"))))
 
 ;; conveniance macro

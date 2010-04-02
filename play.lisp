@@ -37,9 +37,9 @@
 	       (loop while (> time (- *latest* *latency*))
 		  :do 
 		  ;; time to add more
-		    (let ((evaluated (flatten (eval *playing*))))
+		    (let ((evaluated (eval *playing*)))
 		      (sendraw *latest* evaluated)
-		      (incf *latest* (flatlen evaluated)))))		 
+		      (incf *latest* (listlen evaluated)))))		 
 	     (sleep (* *latency* 0.1)))
        (format t "loop thread quit~%")
        (setf *loopthread* nil)))

@@ -19,11 +19,13 @@
   (dolist (x messages)
     (let* ((offset (when timetag
 		     (+ timetag (or (timetag x) 0))))
-	   (bundle (encode-bundle (makeosc x) offset)))
+	   (oscmsg (makeosc x))
+	   (bundle (if oscmsg (encode-bundle oscmsg offset) nil)))		       
       ;xo(format t "~a ~%" (- offset (or timetag 0)))
-      (socket-send *socket* bundle
-		   (length bundle)
-		   :address (target x)))))
+      (when bundle
+	(socket-send *socket* bundle
+		     (length bundle)
+		   :address (target x))))))
 
 (defun send (timetag message)
   (format t "~a" (list 'send timetag message))
@@ -36,4 +38,7 @@
 (defmessage makeosc (event)
   ;; default heißt error!
   (:reply ((event =event=))
-	  (error "no makeosc for ~a" event)))
+	  (error "no makeosc for ~a" event))
+
+  (:reply ((event =nil=))
+	  nil))

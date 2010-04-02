@@ -36,8 +36,6 @@
   (maphash (lambda (x y) 
 	     (send-sc-command y)) *sclang-cache*))
 
-(when nil (sclang-start))
-
 (defun send-sc-command-cached (index command)
   (setf (gethash index *sclang-cache*) command)
   (send-sc-command command))
@@ -49,6 +47,21 @@
 		       :if-exists :append
 		       :if-does-not-exist nil)
     (write-line command foo)))
+
+(defun convert (form)
+  (print (list 'convert form))
+  (cond ((listp form)
+	 (let ((converter (gethash (format nil "~(~a~)" (first form)) *sclang-converters*)))
+	   (if converter
+	       (apply converter (rest form))
+	       (flatstr (format nil "~a" (first form)) 
+			"(" 
+			(commasep (map 'list #'convert (rest form))) 
+			")"))))
+	((keywordp form)
+	 (format nil "~a:" form))
+	((or (numberp form) (symbolp form))
+	 (format nil "~a" form))))
 
 ;; converters
 
@@ -62,40 +75,38 @@
 		     y))
 	  args))
 
-(defun convert (form)
-  (cond ((listp form)
-	 (apply
-	  (or (gethash (format nil "~(~a~)" (first form)) *sclang-converters*)
-	      (lambda (&rest args)
-		;; convert to fun(arg, arg, arg)
-		(flatstr (format nil "~a" (first form)) "(" (commasep args) ")")))
-	  (loop for x in (rest form) :collect (convert x))))
-	((keywordp form)
-	 (format nil "~a:" form))
-	((or (numberp form) (symbolp form))
-	 (format nil "~a" form))))
+(defun scprogn (&rest bodies)
+  (map 'list (lambda (x) (flatstr (convert x) "; ")) bodies))
 
 (defmacro defconverter (symbol args &body body)
   `(setf (gethash (format nil "~(~a~)" ',symbol) *sclang-converters*)
 	 (lambda ,args
 	   ,@body)))
 
-(defconverter list (&rest args)
-    (flatstr "[" (commasep args) "]"))
-
 (defmacro definfix (symbol)
   `(defconverter ,symbol (&rest args)
-     (flatstr "(" (first args)
-	      (map 'list (lambda (x) (flatstr (format nil " ~A " (quote ,symbol)) x)) (rest args))
-	      ")")))
+     (let ((args (map 'list #'convert args)))
+       (flatstr "(" (first args)
+		(map 'list (lambda (x) (flatstr (format nil " ~A " (quote ,symbol)) x)) 
+		     (rest args))
+		")"))))
 
 ;; basic language definitions
+
+(defconverter list (&rest args)
+  (flatstr "[" (commasep (map 'list #'convert args)) "]"))
+
+(defconverter let (args &rest body)
+  (flatstr
+   (reduce (lambda (x y) (flatstr x "var " (convert (first y)) " = " (convert (second y)) "; "))
+	   args
+	   :initial-value nil)
+   (apply #'scprogn body)))
 
 (progn
   ; standard arithmetic
   (definfix +)
   (definfix -)
   (definfix *)
-  (definfix /)
-  (defconverter list (&rest args)
-    (flatstr "[" (commasep args) "]")))
+  (definfix /))
+

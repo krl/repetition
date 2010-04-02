@@ -1,67 +1,63 @@
 (in-package :musik)
 (sclang-start)
 
-(synthdef =basen= ((out 0) (freq 100) (pan 0) (amp 0.5) (sustain 1) (wobfreq 4))
+(synthdef =basen= ((outbus 0) (freq 100) (pan 0) (amp 0.5) (sustain 1) (wobfreq 4))
   !(Out.ar 
-    out (*
-       (RLPF.ar (list (Saw.ar (+ freq (SinOsc.kr (Rand 0 100) 0 (/ freq 100))))
-		      (Saw.ar (+ freq (SinOsc.kr (Rand 0 100) 0 (/ freq 100)))))
-		(SinOsc.kr wobfreq -0.1 320 320)
-		0.4)
-       (EnvGen.kr (Env.linen 0.01 sustain 0.01 1 -4) :doneAction 2)
-       amp)))
+    outbus (*
+	    (RLPF.ar (list (Saw.ar (+ freq (SinOsc.kr (Rand 0 10) 0 (/ freq 100))))
+			   (Saw.ar (+ freq (SinOsc.kr (Rand 0 10) 0 (/ freq 100)))))
+		     (SinOsc.kr wobfreq -0.1 400 2000)
+		     0.7)
+	    (EnvGen.kr (Env.linen 0.1 sustain 0.1 1 -4) :doneAction 2)
+	    amp)))
 
 (samples =kick=  "/mnt/fat/share/samples/drum_cd/909/C_Kick.wav"
-	 =snare= "/mnt/fat/share/samples/drum_cd/909/HandClap.wav"
+	 =snare= "/mnt/fat/share/samples/drum_cd/909/909snare2.WAV"
 	 =hat=   "/mnt/fat/share/samples/drum_cd/909/C_HH.wav"
-	 =hat2=  "/mnt/fat/share/samples/drum_cd/909/909ophat1.WAV")
+	 =hat2=  "/mnt/fat/share/samples/drum_cd/909/909ophat1.WAV"
+	 =crash= "/mnt/fat/share/samples/drum_cd/Crashes/CR201.WAV")
 
-(stop)
+(defun eerie ()
+ (let ((wob   (oneof 0.1 0.5 0.3 1 6))
+       (len   (oneof 2 2 0.5 1 3))
+       (fmult (oneof 1 1 1 1 2/3 3/4 4/5))
+       (base  (* 440 (oneof 1 2/3 3/4 4/5) 1/2)))
 
-(deffilter octave (list)
-  (reduce (lambda (x y) 
-	    (if (find 'freq (available-properties y))
-		(append x (list (m y 'freq (* (freq y) 2))))
-		x))
-	  list
-	  :initial-value list))
-		    
-(play 
- (octave
- (seq (m =basen= 'freq 30)
-      (m =basen= 'freq (oneof 30 33) 'wobfreq (oneof 1 3))
-      =kick=)))
+   (join-nv voice '(1 1.5 2 2.5)
+     (ass ((freq (* base fmult voice))
+	   (wobfreq wob)
+	   (len len)
+	   (sustain #'len)
+	   (pan (lambda (x) (- 1 (random 2.0))))
+	   (amp (lambda (x) (random 0.3))))
+	  =basen=))))
 
-       (seq-n 4 (m =hat2= 'len 0.5 'amp 0.1))
-       (m =hat= 'timetag (oneof 1.25 1.75) 'len 0 'amp 0.2)
-       (seq (m =kick= 'len (oneof 0.875 0.75))
-	    =kick=)
-       (m =snare= 'timetag 1)))
+(defun kick ()
+  (join-nv rate '(0.2 0.3 0.4 1 2)
+    (ass ((rate (+ rate (random 0.01))))
+       =kick=)))
 
-(functionp #'len)
-
-(play
- (ass ((freq (lambda (x) (* (freq x) (+ 1 (* (random 0.001) (oneof 1 -1)))))))
-   (resolve
-    (join-n 10
-      (ass ((wobfreq (oneof 0.5 2))
-	    (amp 0.04)
-	    (scale =major=)
-	    (sustain #'len))    
-	(ass ((len 0.5))
-	  (join
-	   (m =basen= 'tone 3)
-	   (m =basen= 'tone 5)
-	   (m =basen= 'tone 7)))
-	(ass ((len 0.5))
-	  (join
-	   (m =basen= 'tone 3)
-	   (m =basen= 'tone 5)
-	   (m =basen= 'tone 7)))
-	(ass ((len 1))
-	  (join
-	   (m =basen= 'tone 0)
-	   (m =basen= 'tone 2)
-	   (m =basen= 'tone 4))))))))
+(play (over (eerie)
+	(lambda (list)
+	  (let ((length (len (first list))))
+	    (trim length
+	      (join
+		(seq-n (* length 2)
+		  (ass ((len 0.5)
+			(amp (random 0.3)))
+		       =hat=))
+		(ass ((len (len (first list))))
+		     (kick))	      
+		(offset (oneof 0.25 0.5)
+		  (seq =snare= =snare=))
+		;; melody notes
+		(let ((notes (oneof 2 3 1)))
+		  (seq-n notes
+		    (ass ((freq (* (freq (apply 'oneof list)) (oneof 4/3 2)))
+			  (amp (+ 0.1 (random 0.1)))
+			  (wobfreq (/ 1 length notes))
+			  (len (/ length notes))
+			  (sustain #'len))
+			 =basen=)))))))))
 
 (stop)
