@@ -1,4 +1,4 @@
-(in-package :musik)
+(in-package :repetition)
 
 (defproto =ingen-event= (=event=)
   ((target '(#(127 0 0 1) 16180))

@@ -1,4 +1,4 @@
-(in-package :musik)
+(in-package :repetition)
 
 (defun interval (intervals number &optional (accum 0))
   (cond ((> number 0)

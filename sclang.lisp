@@ -1,4 +1,4 @@
-(in-package :musik)
+(in-package :repetition)
 
 ;; parameters
 
@@ -6,6 +6,7 @@
 (defparameter *sclang-keywords* nil)
 (defparameter *sclang-converters* (make-hash-table :test 'equal))
 (defparameter *sclang-cache* (make-hash-table))
+(defparameter *sclang-wrapper* (namestring (asdf:system-relative-pathname :repetition "sclang-wrapper.sh")))
 
 ;; case sensitive reader macro
 
@@ -29,16 +30,22 @@
 ;; process
 
 (defun sclang-start ()
-  (sb-ext:run-program "/bin/sh" '("/home/krille/hax/musik/wrapper.sh") :input :stream :output t :error t :wait nil)
+  (setf *sclang-process* (sb-ext:run-program "/bin/sh" (list *sclang-wrapper*) :input :stream :output t :error t :wait nil))
   (sleep 2)
   (send-sc-command "s.reboot")
-  (sleep 10)
+  (sleep 5)
   (maphash (lambda (x y) 
 	     (send-sc-command y)) *sclang-cache*))
 
+(defun sc-clear-cache ()
+  (setf *sclang-cache* (make-hash-table)))
+
 (defun send-sc-command-cached (index command)
   (setf (gethash index *sclang-cache*) command)
-  (send-sc-command command))
+  (if (and *sclang-process*
+	   (sb-ext:process-alive-p *sclang-process*))
+      (send-sc-command command)
+      (format t "Caching command :~%~a~%" command)))
 
 (defun send-sc-command (command)
   (format t "Sending command:~%~a~%" command)
@@ -49,7 +56,6 @@
     (write-line command foo)))
 
 (defun convert (form)
-  (print (list 'convert form))
   (cond ((listp form)
 	 (let ((converter (gethash (format nil "~(~a~)" (first form)) *sclang-converters*)))
 	   (if converter
@@ -102,6 +108,9 @@
 	   args
 	   :initial-value nil)
    (apply #'scprogn body)))
+
+(defconverter progn (&rest body)
+  (apply #'scprogn body))
 
 (progn
   ; standard arithmetic

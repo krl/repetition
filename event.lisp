@@ -1,4 +1,4 @@
-(in-package :musik)
+(in-package :repetition)
 
 (defproto =event= ()
   ((timetag 0)

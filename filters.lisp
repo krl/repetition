@@ -1,4 +1,4 @@
-(in-package :musik)
+(in-package :repetition)
 
 ;; assignment filter
 
@@ -20,13 +20,12 @@
 
 ;; language version
 
-(defmacro ass (varlist &rest body)
+(defmacro ass (varlist &body body)
   (let ((evaled `(list ,@(map 'list (lambda (x)
 				    (assert (= (length x) 2))
 				    `(list ',(first x) ,(second x)))
 			    varlist))))
-    `(raw-ass ,evaled (apply 'raw-seq (list ,@body)))))
-
+    `(raw-ass ,evaled (apply 'raw-join (list ,@body)))))
 
 ;; over filter
 
@@ -40,15 +39,29 @@
 
 (defun raw-trim (length list)
   (reduce (lambda (x y)
-	    (append x
+	     (append x
 		    (if (< (timetag y) length)
 			(if (< (+ (timetag y) (len y)) length)
 			    (list y)
 			    (ass ((len (- length (timetag y)))) y))
 			nil)))
-	  list
-	  :initial-value nil))
+	   list
+	   :initial-value nil))
 
 (defmacro trim (length &body list)
   (assert (= 1 (length list)))
   `(raw-trim ,length ,(first list)))
+
+;; scale
+
+(defun raw-scale (factor list)
+  (map 'list (lambda (event)
+	       (first 
+		(ass ((len     (lambda (x) (* (len x) factor)))
+		      (timetag (lambda (x) (* (timetag x) factor))))
+		     event)))
+       list))
+
+(defmacro scale (factor &body list)
+  (assert (= 1 (length list)))
+  `(raw-scale ,factor ,(first list)))

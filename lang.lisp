@@ -1,15 +1,27 @@
-(in-package :musik)
+(in-package :repetition)
 
-;; helpers
+;; macros
 
 (defmacro bind-sequence (varname sequence &body body)
   "takes a body list and returns a list of lists over the sequence"
-  `(map 'list (lambda (x)			   
-		(let ((,varname x))
-		  ,@body))
-	,sequence))
+  `(apply #'append 
+	  (map 'list 
+	       ,(if varname
+		    `(lambda (x)	       
+		       (let ((,varname x)) (list ,@body)))
+		    `(lambda (x)
+		       (declare (ignore x))
+		       (list ,@body)))
+	       ,sequence)))
 
-(defun listlen (list)
+(defmacro seq-len (length &body body)
+  `(trim ,length
+	 (let ((list ,@body))
+	   (loop while (< (len list) ,length) :do
+		(setf list (raw-seq list ,@body)))
+	   list)))
+
+(defreply len ((list =list=))
   (apply 'max
 	 ;; the maximum timetag + length
 	 (map 'list (lambda (x) (+ (timetag x) (len x)))
@@ -27,7 +39,7 @@
 ;; raw functions
 
 (defun raw-join (&rest list)
-  (reduce (lambda (x y) (append x (mklist y)))
+  (reduce (lambda (x y) (append x (map 'list #'clone (mklist y))))
 	  list
 	  :initial-value nil))
 
@@ -37,7 +49,7 @@
 	 (let ((offset 0))
 	   (map 'list (lambda (dummy &aux (item (mklist dummy)))
 			;; item is a list from the list of lists 'body
-			(let ((old-offset (pincf offset (listlen item))))
+			(let ((old-offset (pincf offset (len item))))
 			  (map 'list (lambda (x)
 				       (let ((clone (clone x)))
 					 (incf (property-value clone 'timetag) old-offset)
@@ -45,9 +57,12 @@
 			       item)))
 		body))))
 
-;; all the macro sugar
+;; sweet macro sugar
 
 (defmacro seq (&body body)
+  `(raw-seq ,@body))
+
+(defmacro seq-length (length &body body)
   `(raw-seq ,@body))
 
 (defmacro seq-nv (varname sequence &body body)
@@ -55,15 +70,14 @@
 	  (bind-sequence ,varname ,sequence ,@body)))
 
 (defmacro seq-n (sequence &body body)
-  `(seq-nv ,(gensym "dummy") (sq ,sequence) ,@body))
+  `(seq-nv nil (sq ,sequence) ,@body))
 
 (defmacro join-nv (varname sequence &body body)
   `(apply 'raw-join
 	  (bind-sequence ,varname ,sequence ,@body)))
 
 (defmacro join-n (sequence &body body)
-  `(join-nv ,(gensym "dummy") (sq ,sequence) ,@body))
+  `(join-nv nil (sq ,sequence) ,@body))
 
 (defmacro join (&body body)
   `(raw-join ,@body))
-

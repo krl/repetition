@@ -1,4 +1,4 @@
-(in-package :musik)
+(in-package :repetition)
 
 (defvar *latency* 1)
 (defvar *latest* 0)
@@ -39,7 +39,7 @@
 		  ;; time to add more
 		    (let ((evaluated (eval *playing*)))
 		      (sendraw *latest* evaluated)
-		      (incf *latest* (listlen evaluated)))))		 
+		      (incf *latest* (len evaluated)))))		 
 	     (sleep (* *latency* 0.1)))
        (format t "loop thread quit~%")
        (setf *loopthread* nil)))

@@ -1,4 +1,4 @@
-(in-package :musik)
+(in-package :repetition)
 
 (defparameter *sc-node* 0)
 (defparameter *sc-node-max* 1024)
@@ -27,14 +27,18 @@
 		  :initial-value nil)))
 
 (defmacro synthdef (name args &body body)
-  (let (;; convert arg without default to (arg nil)
+  (let (;; arg     => (arg nil)
+	;; (arg x) => (arg x)
 	(args (map 'list (lambda (x) (if (listp x) x (list x nil))) args))
 	(body (if (= (length body) 1) 
 		  (first body) 
 		  (error "synthdef takes exactly one body form"))))
-    ;; create actual event object)
-    (send-sc-command-cached name (format nil "(SynthDef('~(~a~)', {|~:{~(~a~)~@[ = ~a~]~:^, ~} | ~a})).send(s)" name args body))
-    `(defproto ,name (=sc-new=)
-       ,(nconc `((name ,(format nil "~(~a~)" name))
-    		 (argref ',(map 'list 'first args)))
-    	       args))))
+    `(progn
+       ;; create actual event object)
+       (defproto ,name (=sc-new=)
+	 ,(nconc `((name ,(format nil "~(~a~)" name))
+		   (argref ',(map 'list 'first args)))
+		 args))
+       ;; send the code to supercollider
+       (send-sc-command-cached ,name (format nil "(SynthDef('~(~a~)', {|~:{~(~a~)~@[ = ~a~]~:^, ~} | ~a})).send(s)" ',name ',args ,body))
+       ,name)))

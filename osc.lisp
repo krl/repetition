@@ -1,4 +1,4 @@
-(in-package :musik)
+(in-package :repetition)
 
 (defvar *socket*)
 
@@ -16,20 +16,27 @@
      (or future 0)))
 
 (defun sendraw (timetag messages)
-  (dolist (x messages)
-    (let* ((offset (when timetag
-		     (+ timetag (or (timetag x) 0))))
-	   (oscmsg (makeosc x))
-	   (bundle (if oscmsg (encode-bundle oscmsg offset) nil)))		       
-      ;xo(format t "~a ~%" (- offset (or timetag 0)))
-      (when bundle
-	(socket-send *socket* bundle
-		     (length bundle)
-		   :address (target x))))))
+  ;; bundle them by target and timetag.
+  (let (targets)
+    (dolist (x  messages)
+      (push x (getf (getf targets (target x)) (timetag x))))
+
+    (loop for (target groups) on targets by #'cddr :do
+	 (loop for (group-offset msglist) on groups by #'cddr :do
+	      (let* ((offset (when timetag
+			       (+ timetag group-offset)))
+		     (messages (map 'list #'makeosc msglist))
+		     (bundle (encode-bundle messages offset)))
+		
+		(when bundle
+		  ;(format t "~a: sending ~a~%" offset messages)
+		  (socket-send *socket* bundle
+			       (length bundle)
+			       :address target)))))))
 
 (defun send (timetag message)
   (format t "~a" (list 'send timetag message))
-  (sendraw timetag (flatten message)))
+  (sendraw timetag message))
 
 (defun sendnow (message)
   (format t "~a" (list 'sendnow message))
