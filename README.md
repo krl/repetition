@@ -139,6 +139,9 @@ Otherwise we just have two new language features, join-nv and seq-nv + the helpe
 these take a variable name and a list, and joins or sequences together it's body, binding the variable
 to each one of the lists members.
 
+## How does this sound then?
+Like shit really.
+
 # That's all for now
 
 Still lots of development and documentation to be done, but this is fun to play with already and feedback would be appriciated, show up in #repetition on freenode or just send me a mail.
