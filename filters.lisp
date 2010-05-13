@@ -21,6 +21,7 @@
 ;; language version
 
 (defmacro ass (varlist &body body)
+  "Takes a form like (ass ((property1 value1) (property2 value2)) body) and assigns the properties to each body event. The value can be either a standard lisp value or a function. if a function, the value gets set by calling the function with the actual event being assigned as argument."
   (let ((evaled `(list ,@(map 'list (lambda (x)
 				    (assert (= (length x) 2))
 				    `(list ',(first x) ,(second x)))
@@ -30,6 +31,7 @@
 ;; over filter
 
 (defmacro over (form &body function)
+  "Executes the 'form form and calls function with the result. Returns a join of form and function values"
   (assert (= 1 (length function)))
   `(let ((result ,form))
      (raw-join result (funcall ,(first function) result))))
@@ -49,6 +51,7 @@
 	   :initial-value nil))
 
 (defmacro trim (length &body list)
+  "Takes a form like (ass ((property1 value1) (property2 value2)) body) and assigns the properties to each body event. The value can be either a standard lisp value or a function. if a function, the value gets set by calling the function with the actual event being assigned as argument."
   (assert (= 1 (length list)))
   `(raw-trim ,length ,(first list)))
 

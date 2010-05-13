@@ -30,6 +30,7 @@
 ;; process
 
 (defun sclang-start ()
+  "Kills all running supercollider processes and starts them up again (look at sclang-wrapper.sh). Also re-sends all cached sclang synths and commands to the server"
   (setf *sclang-process* (sb-ext:run-program "/bin/sh" (list *sclang-wrapper*) :input :stream :output t :error t :wait nil))
   (sleep 2)
   (send-sc-command "s.reboot")
@@ -118,4 +119,3 @@
   (definfix -)
   (definfix *)
   (definfix /))
-

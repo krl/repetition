@@ -38,5 +38,3 @@
      (offset (oneof 1.75 1.5)
        (ass ((len 0))
 	 =oh=)))))
-
-(stop)

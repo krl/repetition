@@ -37,6 +37,7 @@
 
 ;; conveniance macro
 (defmacro load-samples (&body args)
+  "Takes a list of (object path object path...) and creates corresponding sample event objects."
   (cons 'progn
 	(loop for (key val) on args by #'cddr :collect
 	     `(make-sample ,key ,val))))

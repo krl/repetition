@@ -12,6 +12,7 @@
      (stop)))
 
 (defmacro play (what)
+  "Starts repeating the body until (stop) is called"
   (eval what) ; catch errors here
   (setf *playing* what)
   (format t "playing: ~a~%" *playing*)
@@ -20,6 +21,7 @@
        (setf *loopthread* (sb-thread:make-thread 'loopthread)))))
 
 (defun stop ()
+  "Stops playback after finishing current loop."
   (setf *playing* nil))
 
 (defun loopthread ()
