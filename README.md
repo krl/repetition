@@ -1,1 +1,1 @@
-[Info and documentation can now be found here](http://rymdkoloni.se/repetition.html)
+[Info and documentation can now be found here](http://rymdkoloni.se/repetition)
